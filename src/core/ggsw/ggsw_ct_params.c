@@ -9,9 +9,10 @@
 GGSWCtParams* new_ggsw_ct_params(GLWECtParams* params_glwe, uint64_t k_tilde, uint64_t kappa_tilde,  uint64_t n_limbs_tilde
 ){
     GGSWCtParams* params_ggsw = malloc(sizeof(GGSWCtParams));
-    if (params_ggsw == NULL)
+    if (params_ggsw == NULL){
         perror("Malloc failed.");
         return NULL;
+    }
     
     params_ggsw->params = params_glwe;
     params_ggsw->k_tilde = k_tilde;
@@ -27,7 +28,6 @@ GGSWCtParams* new_ggsw_ct_params(GLWECtParams* params_glwe, uint64_t k_tilde, ui
  * @param params 
  */
 void delete_ggsw_ct_params(GGSWCtParams* params){
-    delete_glwe_ct_params(params->params);
     free(params);
 }
 

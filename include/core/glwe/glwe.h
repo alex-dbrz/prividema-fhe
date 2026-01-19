@@ -12,10 +12,10 @@ typedef struct tnx_element {
 } TNXElement;
 
 // secret key encrypt
-void glwe_encrypt_priv(const Core* core,    // all params of the library: is fft
+int glwe_encrypt_priv(const Core* core,    // all params of the library: is fft
                                             // or ntt, all N that are used
                        GLWECiphertext* ct,  // ciphertext
-                       GLWEPreparedSK* s,   // secret key: vec of size k
+                       GLWEPreparedSK* sk_dft,   // secret key: vec of size k
                        TNXElement* phase    // message + noise
 );
 

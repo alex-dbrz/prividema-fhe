@@ -108,18 +108,18 @@ int encrypt_biv_glwe(const MODULE* module,
         return -1;
     }
 
-    // Computes ∑_j{0,k-1}[resVec_j_dft]
+    // Computes ∑_j{0,k-1}[s_j * a_j]
     for(int64_t j = 0 ; j < k ; j++)
     {
         // The j-ème component of the secret key sk_dft
         PolyUnivDFT* sk_j_univ_dft = sk_dft->values[j]; 
         
-        // Computes resVec_j_dft = (DFT(s_j) * limb_1(a_j) , ... , DFT(s_j) * limb_l(a_j))
+        // Computes DFT(s_j) * DFT(a_j)
         // TODO : can I only use one resVec_j, defined before the loop?
         PolyBivDFT* resVec_j_dft = new_vec_znx_dft_p(module, l); 
         svp_apply_dft_p(module, resVec_j_dft, l, sk_j_univ_dft, res_ct + j*N, l, (k+1)*N); 
         
-        // Computes resVec_j in Zn[XY] space
+        // Computes s_j * a_j
         PolyBiv* resVec_j = new_vec_znx_big_p(module, l); 
         vec_znx_idft_p(module, resVec_j, l, resVec_j_dft, l);
 
@@ -131,11 +131,18 @@ int encrypt_biv_glwe(const MODULE* module,
         delete_vec_znx_big_p(resVec_j);
     }
 
+    // Add the phase to acc
+    for(int64_t i = 0 ; i < l ; i++){    
+        for(int64_t p = 0 ; p < N ; p++){
+                acc[i*N + p] += phase[i*N + p];
+        }
+    }
+    
     // The pointer to limb_0(b)
-    PolyUniv* b_0_univ = res_ct + k*N;
+    PolyBiv* b_0 = res_ct + k*N;
 
-    // For each i in {0,l} limb_i(b) = acc_i = ∑_j{0,k-1}[s_j * limb_i(a_j)]
-    vec_znx_normalize_base2k_p(module, kappa, b_0_univ, l, N*(k+1), acc, l, N);
+    // For each i in {0,l} limb_i(b) = limb_i(acc) = ∑_j{0,k-1}[s_j * limb_i(a_j)]
+    vec_znx_normalize_base2k_p(module, kappa, b_0, l, N*(k+1), acc, l, N);
     
     free(acc);
 
@@ -238,7 +245,7 @@ int ggsw_secret_encrypt(GGSWCiphertext* res,
         for (int64_t j = 0 ; j < nb_rows_per_partial(params_ggsw) ; j++){
 
             // The pointer to bivGLWE(-m * s_j * Y^i)
-            VecBiv* ct_biv = ggsw_Sj_Yi(res, i, j);
+            VecBiv* ct_biv = ggsw_Sj_Yti(res, i, j);
             
             // The pointer to DFT(sk_j)
             PolyUnivDFT* sk_j_univ_dft = sk_dft->values[j];
@@ -482,7 +489,7 @@ int ggsw_secret_encrypt_dft(GGSWCtParams* enc_params,    // parameters
         for (int64_t j = 0 ; j < nb_rows_per_partial(params_ggsw) ; j++)
         {
             // The pointer to bivGLWE(-m * s_j * Y^i) in DFT space
-            VecBivDFT* ct_biv_dft = ggsw_Sj_Yi_dft(res_dft, i, j);
+            VecBivDFT* ct_biv_dft = ggsw_Sj_Yti_dft(res_dft, i, j);
             
             // The pointer to DFT(sk_j)
             PolyUnivDFT* sk_j_univ_dft = sk_dft->values[j];

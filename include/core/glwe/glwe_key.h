@@ -13,20 +13,18 @@
 typedef struct core {
 
 } Core;
-typedef struct svp_ppol {
-} SVPPreparedPoly;
 
 typedef struct glwe_secret_key {
   uint64_t n;  // n= N*k (n is constant: N and k can change when we change the
                // module N)
-  int64_t* s;
+  int64_t* values;
   void* data;
 } GLWESecretKey;
 
 typedef struct glwe_prep_secret_key {
   uint64_t N;
   uint64_t k;
-  SVPPreparedPoly** s;  // vec of size k, each element is prepared vec
+  PolyUnivDFT** values;  // vec of size k, each element is prepared vec
   void* data;
 } GLWEPreparedSK;
 
