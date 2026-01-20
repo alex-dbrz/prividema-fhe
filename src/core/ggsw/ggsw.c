@@ -61,7 +61,13 @@ int decrypt_biv_glwe(GLWECtParams* enc_params,
     int64_t* b = ct->vec + N*k;
     add_biv_poly(enc_params, acc, N, b, N*(k+1), acc, N);
     
-    biv_to_univ(enc_params, phase, acc);
+    PolyBiv* acc_normalized = malloc(poly_biv_bytes(ct->params));
+    vec_znx_normalize_base2k_p(module, ct->params->kappa, acc_normalized, l, N, acc, l, N);
+
+    biv_to_univ(ct->params, phase, acc_normalized);
+    
+    free(acc); free(acc_normalized);
+    delete_module_info(module);
 
     return 0;
 }
@@ -116,19 +122,19 @@ int encrypt_biv_glwe(const MODULE* module,
         
         // Computes DFT(s_j) * DFT(a_j)
         // TODO : can I only use one resVec_j, defined before the loop?
-        PolyBivDFT* resVec_j_dft = new_vec_znx_dft_p(module, l); 
-        svp_apply_dft_p(module, resVec_j_dft, l, sk_j_univ_dft, res_ct + j*N, l, (k+1)*N); 
+        PolyBivDFT* as_j_dft = new_vec_znx_dft_p(module, l); 
+        svp_apply_dft_p(module, as_j_dft, l, sk_j_univ_dft, res_ct + j*N, l, (k+1)*N); 
         
         // Computes s_j * a_j
-        PolyBiv* resVec_j = new_vec_znx_big_p(module, l); 
-        vec_znx_idft_p(module, resVec_j, l, resVec_j_dft, l);
+        PolyBiv* as_j = new_vec_znx_big_p(module, l); 
+        vec_znx_idft_p(module, as_j, l, as_j_dft, l);
 
         // And adds it to acc_j
         for(int64_t p = 0 ; p < N*l ; p++){
-            acc[p] += resVec_j[p];
+            acc[p] += as_j[p];
         }
-        delete_vec_znx_dft_p(resVec_j_dft);
-        delete_vec_znx_big_p(resVec_j);
+        delete_vec_znx_dft_p(as_j_dft);
+        delete_vec_znx_big_p(as_j);
     }
 
     // Add the phase to acc
@@ -321,6 +327,8 @@ int add_error_dft(GLWECtParams* enc_params,
     
     // Add the error in DFT space
     add_biv_poly_dft(enc_params, phase_dft, enc_params->N, phase_dft, enc_params->N, err_dft, enc_params->N);
+
+    return 0;
 }
 
 /**

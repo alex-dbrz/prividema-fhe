@@ -21,12 +21,16 @@ typedef struct glwe_secret_key {
   void* data;
 } GLWESecretKey;
 
+GLWESecretKey* new_glwe_secret_key(int64_t* values, int64_t n);
+
 typedef struct glwe_prep_secret_key {
   uint64_t N;
   uint64_t k;
   PolyUnivDFT** values;  // vec of size k, each element is prepared vec
   void* data;
 } GLWEPreparedSK;
+
+GLWEPreparedSK* new_glwe_secret_key_dft(PolyUnivDFT** values, int64_t N, int64_t k);
 
 typedef struct glwe_public_key {
   uint64_t N;

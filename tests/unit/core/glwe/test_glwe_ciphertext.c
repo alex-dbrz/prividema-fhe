@@ -1,5 +1,4 @@
-#include "core/glwe/glwe.h"
-#include "vec_znx_arithmetic_private.h"
+#include "core/glwe/glwe_ciphertext.h"
 
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
@@ -11,13 +10,14 @@
 #define LBASE NLIMBSBASE/(KBASE+1)
 
 /**
- * @brief Test glwe_encrypt_priv.
+ * @brief Test new_glwe
  */
-Test(glwe_encrypt_priv, basic)
-{
+Test(new_glwe, basic){
     GLWECtParams* params = new_glwe_ct_params(NBASE, KBASE, KAPPABASE, NLIMBSBASE);
     GLWECiphertext* ct = new_glwe(params);
-    GLWEPreparedSK* sk_dft = new_glwe_secret_key_dft(NULL, NBASE, KBASE);
-    glwe_encrypt_priv(ct, sk_dft, phase);
-    cr_assert(1);
+    
+    cr_assert(eq(int, (ct != NULL)&&(ct->vec != NULL), 1));
+
+    delete_glwe(ct);
+    delete_glwe_ct_params(params);
 }

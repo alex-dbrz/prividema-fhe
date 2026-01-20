@@ -8,23 +8,19 @@ typedef struct tnx_element {
   uint64_t N;
   uint64_t kappa;
   uint64_t nb_limbs;
-  int64_t* coeffs;
+  double* coeffs;
 } TNXElement;
 
 // secret key encrypt
-int glwe_encrypt_priv(const Core* core,    // all params of the library: is fft
-                                            // or ntt, all N that are used
-                       GLWECiphertext* ct,  // ciphertext
-                       GLWEPreparedSK* sk_dft,   // secret key: vec of size k
-                       TNXElement* phase    // message + noise
+int glwe_encrypt_priv(GLWECiphertext* ct,  // ciphertext
+                      GLWEPreparedSK* sk_dft,   // secret key: vec of size k
+                      PolyBiv* phase    // message + noise
 );
 
 // secret key decrypt (compute the phase)
-void glwe_phase_priv(const Core* core,   // all params of the library: is fft or
-                                         // ntt, all N that are used
-                     TNXElement* phase,  // decrypted phase
-                     GLWEPreparedSK* s,  // secret key
-                     GLWECiphertext* ct  // ciphertext
+int glwe_phase_priv(TNXElement* phase,  // decrypted phase
+                    GLWEPreparedSK* sk_dft,  // secret key
+                    GLWECiphertext* ct  // ciphertext
 );
 
 // add noise message
@@ -41,7 +37,7 @@ void glwe_encrypt_pub(const Core* core,  // all params of the library: is fft or
 void glwe_phase_pub(const Core* core,    // all params of the library: is fft or
                                          // ntt, all N that are used
                     GLWECiphertext* ct,  // ciphertext
-                    GLWEPreparedSK* s,   // secret key: vec of size k
+                    GLWEPreparedSK* sk_dft,   // secret key: vec of size k
                     TNXElement* phase    // message + noise
 );
 

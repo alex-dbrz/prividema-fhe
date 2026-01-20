@@ -14,19 +14,16 @@
  * @retval - `-1` if an error occurs. In this case the error is from a syscall and perror is called.
  * @retval - `0` otherwise.
  */
-int glwe_encrypt_priv(const Core* core,    // all params of the library: is fft
-                                            // or ntt, all N that are used
-                       GLWECiphertext* ct,  // ciphertext
-                       GLWEPreparedSK* sk_dft,   // secret key: vec of size k
-                       PolyBiv* phase    // message + noise
+int glwe_encrypt_priv(GLWECiphertext* ct,  // ciphertext
+                      GLWEPreparedSK* sk_dft,   // secret key: vec of size k
+                      PolyBiv* phase    // message + noise
 ){
     int64_t N = ct->params->N;
     int64_t k = ct->params->k;
     int64_t kappa = ct->params->kappa;
-    int64_t n_limbs = ct->params->n_limbs;
-    int64_t l = n_limbs / (k+1);
+    int64_t l = poly_biv_size(ct->params);
 
-    MODULE* module = new_module_info(N, FFT64)
+    MODULE* module = new_module_info(N, FFT64);
     if (uniform_random_vec(k * N, ct->vec, l, (k + 1) * N, kappa) > 0) {
         return -1;
     }
@@ -46,25 +43,25 @@ int glwe_encrypt_priv(const Core* core,    // all params of the library: is fft
         
         // Computes DFT(s_j) * DFT(a_j)
         // TODO : can I only use one resVec_j, defined before the loop?
-        PolyBivDFT* resVec_j_dft = new_vec_znx_dft_p(module, l); 
-        svp_apply_dft_p(module, resVec_j_dft, l, sk_j_univ_dft, ct->vec + j*N, l, (k+1)*N); 
+        PolyBivDFT* as_j_dft = new_vec_znx_dft_p(module, l); 
+        svp_apply_dft_p(module, as_j_dft, l, sk_j_univ_dft, ct->vec + j*N, l, (k+1)*N); 
         
         // Computes s_j * a_j
-        PolyBiv* resVec_j = new_vec_znx_big_p(module, l); 
-        vec_znx_idft_p(module, resVec_j, l, resVec_j_dft, l);
+        PolyBiv* as_j = new_vec_znx_big_p(module, l); 
+        vec_znx_idft_p(module, as_j, l, as_j_dft, l);
 
         // And adds it to acc_j
         for(int64_t p = 0 ; p < N*l ; p++){
-            acc[p] += resVec_j[p];
+            acc[p] += as_j[p];
         }
-        delete_vec_znx_dft_p(resVec_j_dft);
-        delete_vec_znx_big_p(resVec_j);
+        delete_vec_znx_dft_p(as_j_dft);
+        delete_vec_znx_big_p(as_j);
     }
 
     // Add the phase to acc
     for(int64_t i = 0 ; i < l ; i++){    
         for(int64_t p = 0 ; p < N ; p++){
-                acc[i*N + p] += phase->coeffs[i*N + p];
+                acc[i*N + p] += phase[i*N + p];
         }
     }
     
@@ -87,19 +84,18 @@ int glwe_encrypt_priv(const Core* core,    // all params of the library: is fft
  * @param key The secret key in DFT space.
  * @param ct The ciphertext.
  */
-int decrypt_biv_glwe(GLWECtParams* enc_params,
-                     TNXElement* phase, 
-                     GLWEPreparedSK* sk_dft,
-                     GLWECiphertext* ct
+int glwe_decrypt_priv(TNXElement* phase,  // decrypted phase
+                      GLWEPreparedSK* sk_dft,  // secret key
+                      GLWECiphertext* ct  // ciphertext
 ){
     // GLWE parameters
-    int64_t N = enc_params->N;
-    int64_t k = enc_params->k;
-    int64_t l = poly_biv_size(enc_params);
+    int64_t N = ct->params->N;
+    int64_t k = ct->params->k;
+    int64_t l = poly_biv_size(ct->params);
 
     MODULE* module = new_module_info(N, FFT64);
 
-    PolyBiv* acc = malloc(poly_biv_bytes(enc_params)); 
+    PolyBiv* acc = malloc(poly_biv_bytes(ct->params)); 
     if (!acc){
         perror("calloc failed");
         return -1;
@@ -130,9 +126,14 @@ int decrypt_biv_glwe(GLWECtParams* enc_params,
 
     // Computes acc = b - ∑_j{0,k-1}[sk_j * a_j]
     int64_t* b = ct->vec + N*k;
-    add_biv_poly(enc_params, acc, N, b, N*(k+1), acc, N);
+    add_biv_poly(ct->params, acc, N, b, N*(k+1), acc, N);
     
-    biv_to_univ(enc_params, phase, acc);
+    PolyBiv* acc_normalized = malloc(poly_biv_bytes(ct->params));
+    vec_znx_normalize_base2k_p(module, ct->params->kappa, acc_normalized, l, N, acc, l, N);
 
+    biv_to_univ(ct->params, phase->coeffs, acc_normalized);
+
+    free(acc); free(acc_normalized);
+    
     return 0;
 }
